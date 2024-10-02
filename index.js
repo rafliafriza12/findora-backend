@@ -99,53 +99,53 @@ const searchDocuments = async (query) => {
   return results;
 };
 
-const evaluateResults = (predictedResults, actualResults) => {
-  // console.log(actualResults);
-  const relevantDocs = new Set(actualResults.map(doc => doc._id));
-  const retrievedDocs = new Set(predictedResults.map(doc => doc.document_id));
-  // console.log(relevantDocs);
-  // console.log(retrievedDocs);
-  // Precision
-  const truePositive = Array.from(retrievedDocs).filter(docId => relevantDocs.has(docId)).length;
+// const evaluateResults = (predictedResults, actualResults) => {
+//   // console.log(actualResults);
+//   const relevantDocs = new Set(actualResults.map(doc => doc._id));
+//   const retrievedDocs = new Set(predictedResults.map(doc => doc.document_id));
+//   // console.log(relevantDocs);
+//   // console.log(retrievedDocs);
+//   // Precision
+//   const truePositive = Array.from(retrievedDocs).filter(docId => relevantDocs.has(docId)).length;
 
-  // console.log("retrieve",Array.from(retrievedDocs));
-  // console.log("relevan",Array.from(relevantDocs));
-  const precision = truePositive / retrievedDocs.size;
-  // console.log(precision);
+//   // console.log("retrieve",Array.from(retrievedDocs));
+//   // console.log("relevan",Array.from(relevantDocs));
+//   const precision = truePositive / retrievedDocs.size;
+//   // console.log(precision);
 
-  // Recall
-  const recall = truePositive / relevantDocs.size;
+//   // Recall
+//   const recall = truePositive / relevantDocs.size;
 
-  // F1 Score
-  const f1Score = (precision + recall) ? (2 * precision * recall) / (precision + recall) : 0;
+//   // F1 Score
+//   const f1Score = (precision + recall) ? (2 * precision * recall) / (precision + recall) : 0;
 
-  // Mean Average Precision (MAP)
-  const averagePrecision = predictedResults.reduce((sum, result, index) => {
-    const currentRelevantDocs = predictedResults.slice(0, index + 1).filter(doc => relevantDocs.has(doc._id)).length;
-    return sum + (currentRelevantDocs / (index + 1));
-  }, 0) / predictedResults.length;
+//   // Mean Average Precision (MAP)
+//   const averagePrecision = predictedResults.reduce((sum, result, index) => {
+//     const currentRelevantDocs = predictedResults.slice(0, index + 1).filter(doc => relevantDocs.has(doc._id)).length;
+//     return sum + (currentRelevantDocs / (index + 1));
+//   }, 0) / predictedResults.length;
 
-  return {
-    precision,
-    recall,
-    f1Score,
-    meanAveragePrecision: averagePrecision,
-  };
-};
+//   return {
+//     precision,
+//     recall,
+//     f1Score,
+//     meanAveragePrecision: averagePrecision,
+//   };
+// };
 
-const getActualRelevantResults = async (query) => {
-  // Tokenisasi dan stemming query untuk meningkatkan relevansi
-  const words = tokenizer.tokenize(query);
-  const stemmedWords = words.map(word => stemmer.stem(word));
+// const getActualRelevantResults = async (query) => {
+//   // Tokenisasi dan stemming query untuk meningkatkan relevansi
+//   const words = tokenizer.tokenize(query);
+//   const stemmedWords = words.map(word => stemmer.stem(word));
 
-  // Mencari dokumen yang relevan berdasarkan title atau content
-  return await documentCollections.find({
-    $or: [
-      { title: { $regex: new RegExp(stemmedWords.join('|'), 'i') } }, // Mencari di title
-      { paragraph: { $regex: new RegExp(stemmedWords.join('|'), 'i') } }  // Mencari di content
-    ]
-  }).toArray();
-};
+//   // Mencari dokumen yang relevan berdasarkan title atau content
+//   return await documentCollections.find({
+//     $or: [
+//       { title: { $regex: new RegExp(stemmedWords.join('|'), 'i') } }, // Mencari di title
+//       { paragraph: { $regex: new RegExp(stemmedWords.join('|'), 'i') } }  // Mencari di content
+//     ]
+//   }).toArray();
+// };
 
 app.get('/', (req, res) => {
   res.send("Hallo");
@@ -164,9 +164,9 @@ app.post("/search", async (req, res) => {
     try {
       // Proses pencarian
       const results = await searchDocuments(stemmed.join(' '));
-      const actualResults = await getActualRelevantResults(query);
+      // const actualResults = await getActualRelevantResults(query);
       // console.log(actualResults);
-      const evaluationMetrics = evaluateResults(results, actualResults);
+      // const evaluationMetrics = evaluateResults(results, actualResults);
       // console.log(evaluationMetrics);
       // Pagination
       const totalResults = results.length; // Total hasil pencarian
