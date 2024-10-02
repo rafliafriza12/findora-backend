@@ -108,8 +108,8 @@ const evaluateResults = (predictedResults, actualResults) => {
   // Precision
   const truePositive = Array.from(retrievedDocs).filter(docId => relevantDocs.has(docId)).length;
 
-  console.log("retrieve",Array.from(retrievedDocs));
-  console.log("relevan",Array.from(relevantDocs));
+  // console.log("retrieve",Array.from(retrievedDocs));
+  // console.log("relevan",Array.from(relevantDocs));
   const precision = truePositive / retrievedDocs.size;
   // console.log(precision);
 
@@ -146,6 +146,10 @@ const getActualRelevantResults = async (query) => {
     ]
   }).toArray();
 };
+
+app.get('/', (req, res) => {
+  res.send("Hallo");
+});
 
 app.post("/search", async (req, res) => {
     const stemmed = []
