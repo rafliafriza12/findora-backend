@@ -182,7 +182,6 @@ app.post("/search", async (req, res) => {
         totalResults,
         totalPages,
         results: paginatedResults,
-        evaluationMetrics,
       });
     } catch (error) {
       console.error("Error during search:", error);
