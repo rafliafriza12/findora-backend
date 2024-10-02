@@ -6,10 +6,10 @@ function readUrlsFromFile(filePath) {
     return fs.readFileSync(filePath, 'utf-8').split('\n').filter(Boolean);
 }
 
-// Fungsi untuk mengecek apakah teks mengandung JavaScript
-function containsJavaScript(text) {
-    const jsPatterns = /(var|let|const|function|\{\}|\(\)|=>)/g;
-    return jsPatterns.test(text);
+// Fungsi untuk menghapus kata-kata yang tidak diinginkan
+function removeUnwantedWords(text) {
+    const unwantedWords = /(ADVERTISEMENT|SCROLL TO CONTINUE WITH CONTENT|Simak juga Video:|\[Gambas:)/gi;
+    return text.replace(unwantedWords, '').trim();
 }
 
 // Fungsi untuk melakukan fetch dan parsing konten dari HTML menggunakan XPath
@@ -34,14 +34,17 @@ async function fetchAndParseContent(url) {
         // Cek jumlah paragraf, hanya ambil jika ada 4 atau lebih
         if (paragraphNodes.snapshotLength < 4) {
             return { url, title, paragraph: 'Konten kurang dari 4 paragraf' };
-        }   
+        }
 
-        // Ambil konten paragraf, buang yang berisi JavaScript
+        // Ambil konten paragraf, buang yang berisi JavaScript dan kata-kata yang tidak diinginkan
         const paragraphs = [];
         for (let i = 0; i < paragraphNodes.snapshotLength; i++) {
             const paragraphText = paragraphNodes.snapshotItem(i).textContent.trim();
-            if (!containsJavaScript(paragraphText)) {
-                paragraphs.push(paragraphText);
+            const cleanedText = removeUnwantedWords(paragraphText); // Menghapus kata-kata yang tidak diinginkan
+
+            // Tambahkan hanya jika ada konten setelah dibersihkan
+            if (cleanedText) {
+                paragraphs.push(cleanedText);
             }
         }
 

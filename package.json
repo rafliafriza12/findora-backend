@@ -14,7 +14,9 @@
     "mongodb": "^6.9.0",
     "mongoose": "^8.7.0",
     "natural": "^8.0.1",
-    "puppeteer": "^23.4.1"
+    "puppeteer": "^23.4.1",
+    "sastrawi": "sastrawi/sastrawi",
+    "sastrawijs": "^1.1.0"
   },
   "scripts": {
     "start": "nodemon index.js"

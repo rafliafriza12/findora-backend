@@ -4,8 +4,11 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from nltk.corpus import stopwords
 import numpy as np
 import nltk
+from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
 
 
+factory = StemmerFactory()
+stemmer = factory.create_stemmer()
 # Mengambil stopwords bahasa Indonesia
 nltk.download('stopwords')
 stop_words = set(stopwords.words('indonesian'))
@@ -23,8 +26,14 @@ def get_documents_from_db():
 
 def preprocess_text(text):
     # Mengubah teks menjadi lowercase dan menghapus karakter khusus
-    text = re.sub(r'\W', ' ', text.lower())
-    return text
+    text = re.sub(r'\W+', ' ', text.lower())
+    
+    # Melakukan stemming pada setiap kata dan menghapus stopwords
+    words = text.split()
+    stemmed_words = [stemmer.stem(word) for word in words if word not in stop_words]
+
+    # Mengembalikan hasil sebagai string
+    return ' '.join(stemmed_words)
 
 def calculate_tfidf(documents):
     # Ambil konten dokumen setelah diproses
