@@ -148,7 +148,7 @@ const searchDocuments = async (query) => {
 // };
 
 app.get('/', (req, res) => {
-  res.send("Hallo");
+  res.send("Hallo halo");
 });
 
 app.post("/search", async (req, res) => {
