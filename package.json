@@ -1,0 +1,22 @@
+{
+  "name": "search-engine",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.7.7",
+    "body-parser": "^1.20.3",
+    "cheerio": "^1.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "jsdom": "^25.0.1",
+    "mongodb": "^6.9.0",
+    "mongoose": "^8.7.0",
+    "natural": "^8.0.1",
+    "puppeteer": "^23.4.1"
+  },
+  "scripts": {
+    "start": "nodemon index.js"
+  }
+}
