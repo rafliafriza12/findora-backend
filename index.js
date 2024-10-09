@@ -164,11 +164,6 @@ app.post("/search", async (req, res) => {
     try {
       // Proses pencarian
       const results = await searchDocuments(stemmed.join(' '));
-      // const actualResults = await getActualRelevantResults(query);
-      // console.log(actualResults);
-      // const evaluationMetrics = evaluateResults(results, actualResults);
-      // console.log(evaluationMetrics);
-      // Pagination
       const totalResults = results.length; // Total hasil pencarian
       const totalPages = Math.ceil(totalResults / limit); // Total halaman
       const startIndex = (page - 1) * limit; // Indeks awal untuk slice
