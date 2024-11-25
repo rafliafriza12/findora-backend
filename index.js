@@ -2,14 +2,12 @@ const express = require("express");
 const mongoose = require("mongoose");
 const { configDotenv } = require("dotenv");
 const cors = require("cors");
-const natural = require('natural');
-const bodyParser = require('body-parser');
-const { Stemmer, Tokenizer } = require('sastrawijs');
+const natural = require("natural");
+const bodyParser = require("body-parser");
+const { Stemmer, Tokenizer } = require("sastrawijs");
 
-
-
-const stemmer = new Stemmer()
-const tokenizer = new Tokenizer()
+const stemmer = new Stemmer();
+const tokenizer = new Tokenizer();
 const tfIdf = natural.TfIdf;
 configDotenv();
 const port = 5000;
@@ -30,12 +28,63 @@ const clientOptions = {
 async function connectDB() {
   try {
     await mongoose.connect(process.env.MONGO_URI, clientOptions);
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    console.log(
+      "Pinged your deployment. You successfully connected to MongoDB!"
+    );
   } catch (error) {
     console.error("Koneksi ke MongoDB gagal:", error);
     process.exit(1); // Keluar dari proses jika koneksi gagal
   }
 }
+
+const stemText = (text) => {
+  // Tokenisasi teks terlebih dahulu
+  const tokens = tokenizer.tokenize(text);
+  // Lakukan stemming pada setiap token yang dihasilkan
+  return tokens.map((token) => stemmer.stem(token)).join(" ");
+};
+
+// Fungsi untuk menghitung Jaccard Similarity
+const jaccardSimilarity = (setA, setB) => {
+  const intersection = new Set([...setA].filter((x) => setB.has(x))); // Irisan
+  const union = new Set([...setA, ...setB]); // Gabungan
+  return intersection.size / union.size; // Similarity
+};
+
+// Fungsi untuk melakukan pencarian dokumen berdasarkan Jaccard Similarity
+const searchDocumentsWithJaccard = async (query) => {
+  // Ambil semua dokumen dari MongoDB
+  const documents = await documentCollections.find({}).toArray();
+
+  // Tokenisasi dan stemming query
+  const queryStemmed = stemText(query); // Stemming pada query
+  const querySet = new Set(queryStemmed.split(/\s+/)); // Pisahkan query yang sudah di-stem menjadi kata-kata
+
+  // Hitung kesamaan Jaccard untuk setiap dokumen
+  const results = documents.map((doc) => {
+    // Tokenisasi dan stemming paragraph dokumen
+    const docStemmed = stemText(doc.paragraph); // Stemming pada paragraph dokumen
+    const docSet = new Set(docStemmed.split(/\s+/)); // Pisahkan paragraph yang sudah di-stem menjadi kata-kata
+
+    // Hitung Jaccard Similarity
+    const similarity = jaccardSimilarity(querySet, docSet); // Hitung Jaccard Similarity
+
+    return {
+      document_id: doc._id,
+      url: doc.url,
+      title: doc.title,
+      similarity: similarity,
+    };
+  });
+
+  // Filter dokumen yang memiliki kesamaan > 0
+  const filteredResults = results.filter((result) => result.similarity > 0);
+
+  // Urutkan berdasarkan nilai similarity tertinggi
+  filteredResults.sort((a, b) => b.similarity - a.similarity);
+
+  return filteredResults;
+};
 
 const cosineSimilarity = (vec1, vec2) => {
   const dotProduct = Object.keys(vec1).reduce((sum, key) => {
@@ -59,21 +108,21 @@ const searchDocuments = async (query) => {
 
   // Menghitung vektor TF-IDF untuk query
   const tfidf = new tfIdf();
-  tfidfDocs.forEach(doc => {
+  tfidfDocs.forEach((doc) => {
     tfidf.addDocument(doc.tfidf_scores); // Pastikan doc.tfidf_scores adalah teks dokumen
   });
 
   // Tambahkan query sebagai dokumen baru
-  tfidf.addDocument(query); 
+  tfidf.addDocument(query);
   const queryVector = tfidf.listTerms(tfidfDocs.length).reduce((acc, term) => {
     acc[term.term] = term.tfidf; // Membuat vektor untuk query
     return acc;
   }, {});
 
   // Periksa apakah ada dokumen yang relevan berdasarkan query
-  const relevantResults = tfidfDocs.filter(doc => {
+  const relevantResults = tfidfDocs.filter((doc) => {
     const docTfidfScores = doc.tfidf_scores; // TF-IDF dari dokumen
-    return Object.keys(queryVector).some(term => docTfidfScores[term] > 0); // Pastikan ada skor TF-IDF untuk term dalam dokumen
+    return Object.keys(queryVector).some((term) => docTfidfScores[term] > 0); // Pastikan ada skor TF-IDF untuk term dalam dokumen
   });
 
   // Jika tidak ada dokumen relevan, kembalikan array kosong
@@ -82,14 +131,14 @@ const searchDocuments = async (query) => {
   }
 
   // Hitung kemiripan untuk setiap dokumen relevan
-  const results = relevantResults.map(doc => {
+  const results = relevantResults.map((doc) => {
     const docTfidfScores = doc.tfidf_scores; // TF-IDF dari dokumen
     const similarity = cosineSimilarity(queryVector, docTfidfScores); // Menghitung kemiripan
 
     return {
       document_id: doc.document_id,
       title: doc.title,
-      similarity: similarity
+      similarity: similarity,
     };
   });
 
@@ -99,110 +148,94 @@ const searchDocuments = async (query) => {
   return results;
 };
 
-// const evaluateResults = (predictedResults, actualResults) => {
-//   // console.log(actualResults);
-//   const relevantDocs = new Set(actualResults.map(doc => doc._id));
-//   const retrievedDocs = new Set(predictedResults.map(doc => doc.document_id));
-//   // console.log(relevantDocs);
-//   // console.log(retrievedDocs);
-//   // Precision
-//   const truePositive = Array.from(retrievedDocs).filter(docId => relevantDocs.has(docId)).length;
-
-//   // console.log("retrieve",Array.from(retrievedDocs));
-//   // console.log("relevan",Array.from(relevantDocs));
-//   const precision = truePositive / retrievedDocs.size;
-//   // console.log(precision);
-
-//   // Recall
-//   const recall = truePositive / relevantDocs.size;
-
-//   // F1 Score
-//   const f1Score = (precision + recall) ? (2 * precision * recall) / (precision + recall) : 0;
-
-//   // Mean Average Precision (MAP)
-//   const averagePrecision = predictedResults.reduce((sum, result, index) => {
-//     const currentRelevantDocs = predictedResults.slice(0, index + 1).filter(doc => relevantDocs.has(doc._id)).length;
-//     return sum + (currentRelevantDocs / (index + 1));
-//   }, 0) / predictedResults.length;
-
-//   return {
-//     precision,
-//     recall,
-//     f1Score,
-//     meanAveragePrecision: averagePrecision,
-//   };
-// };
-
-// const getActualRelevantResults = async (query) => {
-//   // Tokenisasi dan stemming query untuk meningkatkan relevansi
-//   const words = tokenizer.tokenize(query);
-//   const stemmedWords = words.map(word => stemmer.stem(word));
-
-//   // Mencari dokumen yang relevan berdasarkan title atau content
-//   return await documentCollections.find({
-//     $or: [
-//       { title: { $regex: new RegExp(stemmedWords.join('|'), 'i') } }, // Mencari di title
-//       { paragraph: { $regex: new RegExp(stemmedWords.join('|'), 'i') } }  // Mencari di content
-//     ]
-//   }).toArray();
-// };
-
-app.get('/', (req, res) => {
+app.get("/", (req, res) => {
   res.send("Hallo halo");
 });
 
 app.post("/search", async (req, res) => {
-    const stemmed = []
-    const { query, page = 1, limit = 10 } = req.body; // Ambil page dan limit dari body, default ke 1 dan 10
-    if (!query) {
-      return res.status(400).send("Query tidak boleh kosong");
-    }
-    const words = tokenizer.tokenize(query);
-    for (const word of words) {
-      stemmed.push(stemmer.stem(word))
-    }
-    try {
-      // Proses pencarian
-      const results = await searchDocuments(stemmed.join(' '));
-      const totalResults = results.length; // Total hasil pencarian
-      const totalPages = Math.ceil(totalResults / limit); // Total halaman
-      const startIndex = (page - 1) * limit; // Indeks awal untuk slice
-      const endIndex = startIndex + limit; // Indeks akhir untuk slice
-      const paginatedResults = results.slice(startIndex, endIndex); // Ambil hasil sesuai pagination
-  
-      // Kirim respons dengan data pagination
-      res.status(200).json({
-        page,
-        limit,
-        totalResults,
-        totalPages,
-        results: paginatedResults,
-      });
-    } catch (error) {
-      console.error("Error during search:", error);
-      res.status(500).send("Terjadi kesalahan pada server");
-    }
-  });
+  const stemmed = [];
+  const { query, page = 1, limit = 10 } = req.body; // Ambil page dan limit dari body, default ke 1 dan 10
+  if (!query) {
+    return res.status(400).send("Query tidak boleh kosong");
+  }
+  const words = tokenizer.tokenize(query);
+  for (const word of words) {
+    stemmed.push(stemmer.stem(word));
+  }
+  try {
+    // Proses pencarian
+    const results = await searchDocuments(stemmed.join(" "));
+    const totalResults = results.length; // Total hasil pencarian
+    const totalPages = Math.ceil(totalResults / limit); // Total halaman
+    const startIndex = (page - 1) * limit; // Indeks awal untuk slice
+    const endIndex = startIndex + limit; // Indeks akhir untuk slice
+    const paginatedResults = results.slice(startIndex, endIndex); // Ambil hasil sesuai pagination
 
-  app.get("/documents/:id", async (req, res) => {
-    const documentId = req.params.id; // Ambil ID dari parameter URL
-
-    try {
-        // Cari dokumen di koleksi menggunakan ID
-        const document = await documentCollections.findOne({ _id: new mongoose.Types.ObjectId(documentId) });
-
-        if (!document) {
-            return res.status(404).json({ message: "Dokumen tidak ditemukan" });
-        }
-
-        // Kirim respons dengan dokumen
-        res.status(200).json(document);
-    } catch (error) {
-        console.error("Error fetching document:", error);
-        res.status(500).json({ message: "Terjadi kesalahan pada server" });
-    }
+    // Kirim respons dengan data pagination
+    res.status(200).json({
+      page,
+      limit,
+      totalResults,
+      totalPages,
+      results: paginatedResults,
+    });
+  } catch (error) {
+    console.error("Error during search:", error);
+    res.status(500).send("Terjadi kesalahan pada server");
+  }
 });
-  
+
+app.post("/search-jaccard", async (req, res) => {
+  const { query, page = 1, limit = 10 } = req.body; // Ambil query, page, dan limit dari body
+  if (!query) {
+    return res.status(400).send("Query tidak boleh kosong");
+  }
+
+  try {
+    // Panggil fungsi searchDocumentsWithJaccard
+    const results = await searchDocumentsWithJaccard(query);
+
+    // Pagination
+    const totalResults = results.length; // Total hasil pencarian
+    const totalPages = Math.ceil(totalResults / limit); // Total halaman
+    const startIndex = (page - 1) * limit; // Indeks awal untuk slice
+    const endIndex = startIndex + limit; // Indeks akhir untuk slice
+    const paginatedResults = results.slice(startIndex, endIndex); // Ambil hasil sesuai pagination
+
+    // Kirim respons dengan hasil paginasi
+    res.status(200).json({
+      page,
+      limit,
+      totalResults,
+      totalPages,
+      results: paginatedResults,
+    });
+  } catch (error) {
+    console.error("Error during Jaccard search:", error);
+    res.status(500).send("Terjadi kesalahan pada server");
+  }
+});
+
+app.get("/documents/:id", async (req, res) => {
+  const documentId = req.params.id; // Ambil ID dari parameter URL
+
+  try {
+    // Cari dokumen di koleksi menggunakan ID
+    const document = await documentCollections.findOne({
+      _id: new mongoose.Types.ObjectId(documentId),
+    });
+
+    if (!document) {
+      return res.status(404).json({ message: "Dokumen tidak ditemukan" });
+    }
+
+    // Kirim respons dengan dokumen
+    res.status(200).json(document);
+  } catch (error) {
+    console.error("Error fetching document:", error);
+    res.status(500).json({ message: "Terjadi kesalahan pada server" });
+  }
+});
 
 // Memanggil fungsi koneksi dan memulai server
 connectDB()
