@@ -20,7 +20,7 @@ doc_collection = db['documents']  # Collection dokumen
 tfidf_collection = db['tfidf_results']  # Collection untuk hasil TF-IDF
 
 def get_documents_from_db():
-    documents = list(doc_collection.find({}, {'_id': 1,'url': 1, 'title': 1, 'paragraph': 1}))
+    documents = list(doc_collection.find({}, {'_id': 1,'url': 1, 'title': 1, 'paragraph': 1, 'imageSrc': 1}))
     return documents
 
 
@@ -55,9 +55,13 @@ def save_tfidf_results(documents, tfidf_matrix, terms):
         # Simpan ke MongoDB
         tfidf_collection.insert_one({
             'document_id': doc['_id'],
-            'title': doc['title'],
+            'url': doc.get('url', ''),  # Tambahkan URL jika ada
+            'title': doc.get('title', 'Judul tidak ditemukan'),  # Tambahkan judul
+            'paragraph': doc.get('paragraph', 'Paragraf tidak ditemukan'),  # Tambahkan paragraf
+            'imageSrc': doc.get('imageSrc', 'Gambar tidak ditemukan'),  # Tambahkan sumber gambar
             'tfidf_scores': tfidf_scores
         })
+
 
 def main():
     # Langkah 1: Ambil dokumen dari MongoDB

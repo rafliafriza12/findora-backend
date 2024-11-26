@@ -71,8 +71,9 @@ const searchDocumentsWithJaccard = async (query) => {
 
     return {
       document_id: doc._id,
-      url: doc.url,
       title: doc.title,
+      paragraph: doc.paragraph,
+      imageSrc: doc.imageSrc,
       similarity: similarity,
     };
   });
@@ -138,6 +139,8 @@ const searchDocuments = async (query) => {
     return {
       document_id: doc.document_id,
       title: doc.title,
+      paragraph: doc.paragraph,
+      imageSrc: doc.imageSrc,
       similarity: similarity,
     };
   });
