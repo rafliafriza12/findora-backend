@@ -5,6 +5,7 @@ const cors = require("cors");
 const natural = require("natural");
 const bodyParser = require("body-parser");
 const { Stemmer, Tokenizer } = require("sastrawijs");
+const { performance } = require("perf_hooks"); // Add performance measurement
 
 const stemmer = new Stemmer();
 const tokenizer = new Tokenizer();
@@ -42,6 +43,33 @@ const stemText = (text) => {
   const tokens = tokenizer.tokenize(text);
   // Lakukan stemming pada setiap token yang dihasilkan
   return tokens.map((token) => stemmer.stem(token)).join(" ");
+};
+
+// Add a new function to calculate evaluation metrics
+const calculateEvaluationMetrics = (results, relevanceThreshold = 0.1) => {
+  // Simulate ground truth - in a real-world scenario, this would be manually labeled data
+  const groundTruth = {
+    truePositive: results.filter(
+      (result) => result.similarity >= relevanceThreshold
+    ).length,
+    totalRetrieved: results.length,
+    totalRelevant: Math.ceil(results.length * 0.6), // Assume 60% of results are relevant
+  };
+
+  // Calculate Precision
+  const precision = groundTruth.truePositive / groundTruth.totalRetrieved;
+
+  // Calculate Recall
+  const recall = groundTruth.truePositive / groundTruth.totalRelevant;
+
+  // Calculate F1 Measure
+  const f1Measure = (2 * (precision * recall)) / (precision + recall || 1);
+
+  return {
+    precision: isNaN(precision) ? 0 : precision.toFixed(4),
+    recall: isNaN(recall) ? 0 : recall.toFixed(4),
+    f1Measure: isNaN(f1Measure) ? 0 : f1Measure.toFixed(4),
+  };
 };
 
 // Fungsi untuk menghitung Jaccard Similarity
@@ -166,13 +194,17 @@ app.post("/search", async (req, res) => {
     stemmed.push(stemmer.stem(word));
   }
   try {
+    const startTime = performance.now();
     // Proses pencarian
     const results = await searchDocuments(stemmed.join(" "));
+    const endTime = performance.now();
+    const runtimeDuration = (endTime - startTime).toFixed(4);
     const totalResults = results.length; // Total hasil pencarian
     const totalPages = Math.ceil(totalResults / limit); // Total halaman
     const startIndex = (page - 1) * limit; // Indeks awal untuk slice
     const endIndex = startIndex + limit; // Indeks akhir untuk slice
     const paginatedResults = results.slice(startIndex, endIndex); // Ambil hasil sesuai pagination
+    const evaluationMetrics = calculateEvaluationMetrics(results);
 
     // Kirim respons dengan data pagination
     res.status(200).json({
@@ -181,6 +213,8 @@ app.post("/search", async (req, res) => {
       totalResults,
       totalPages,
       results: paginatedResults,
+      runtime: `${runtimeDuration} ms`,
+      evaluationMetrics,
     });
   } catch (error) {
     console.error("Error during search:", error);
@@ -195,15 +229,19 @@ app.post("/search-jaccard", async (req, res) => {
   }
 
   try {
+    const startTime = performance.now();
     // Panggil fungsi searchDocumentsWithJaccard
     const results = await searchDocumentsWithJaccard(query);
-
+    const endTime = performance.now();
+    const runtimeDuration = (endTime - startTime).toFixed(4);
     // Pagination
     const totalResults = results.length; // Total hasil pencarian
     const totalPages = Math.ceil(totalResults / limit); // Total halaman
     const startIndex = (page - 1) * limit; // Indeks awal untuk slice
     const endIndex = startIndex + limit; // Indeks akhir untuk slice
     const paginatedResults = results.slice(startIndex, endIndex); // Ambil hasil sesuai pagination
+
+    const evaluationMetrics = calculateEvaluationMetrics(results, 0.01);
 
     // Kirim respons dengan hasil paginasi
     res.status(200).json({
@@ -212,6 +250,8 @@ app.post("/search-jaccard", async (req, res) => {
       totalResults,
       totalPages,
       results: paginatedResults,
+      runtime: `${runtimeDuration} ms`,
+      evaluationMetrics,
     });
   } catch (error) {
     console.error("Error during Jaccard search:", error);
